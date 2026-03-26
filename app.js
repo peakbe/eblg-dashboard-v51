@@ -14,11 +14,33 @@ const EBLG = { lat:50.6374, lon:5.4432, runways:[
 ]};
 
 let runwayAxisLayer = null;
+let runwayAxisArrow = null;
 
 function drawRunwayAxis(runwayName, phase) {
   if (runwayAxisLayer) {
     map.removeLayer(runwayAxisLayer);
   }
+// Flèche animée
+if (runwayAxisArrow) {
+  map.removeLayer(runwayAxisArrow);
+}
+
+runwayAxisArrow = L.polylineDecorator([start, end], {
+  patterns: [
+    {
+      offset: '0%',
+      repeat: 50,
+      symbol: L.Symbol.arrowHead({
+        pixelSize: 12,
+        polygon: false,
+        pathOptions: {
+          color: color,
+          weight: 3
+        }
+      })
+    }
+  ]
+}).addTo(map);
 
   // Coordonnées des seuils (à adapter si tu veux plus précis)
   const RW22 = [50.64594, 5.44375];
