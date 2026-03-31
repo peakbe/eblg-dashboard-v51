@@ -109,88 +109,73 @@ const CORRIDORS = {
 };
 
 function drawRunway(runway) {
-    if (!map) return;
+    if (!runwayLayer) return;
 
-    if (runwayLayer) {
-        map.removeLayer(runwayLayer);
-        runwayLayer = null;
-    }
+    runwayLayer.clearLayers();
+
+    if (runway === "UNKNOWN") return;
 
     const r = RUNWAYS[runway];
-    if (!r) return;
 
-    runwayLayer = L.polyline([r.start, r.end], {
-        color: r.color,
-        weight: 6,
-        opacity: 0.9
-    }).addTo(map);
+    const line = L.polyline([r.start, r.end], {
+        color: runway === "22" ? "red" : "blue",
+        weight: 4
+    });
+
+    line.addTo(runwayLayer);
 }
 
+
 function drawCorridor(runway) {
-    if (!map) return;
+    if (!corridorLayer) return;
 
-    if (corridorLayer) {
-        map.removeLayer(corridorLayer);
-        corridorLayer = null;
-    }
-    if (corridorArrows) {
-        map.removeLayer(corridorArrows);
-        corridorArrows = null;
-    }
+    corridorLayer.clearLayers();
 
-    const points = CORRIDORS[runway];
+    if (runway === "UNKNOWN") return;
+
     const r = RUNWAYS[runway];
-    if (!points || !r) return;
 
-    corridorLayer = L.polyline(points, {
-        color: r.color,
-        weight: 3,
-        opacity: 0.7
-    }).addTo(map);
+    const line = L.polyline([r.start, r.end], {
+        color: "orange",
+        weight: 2,
+        dashArray: "6,6"
+    }).addTo(corridorLayer);
 
-    corridorArrows = L.polylineDecorator(corridorLayer, {
+    L.polylineDecorator(line, {
         patterns: [
             {
-                offset: 20,
-                repeat: 40,
+                offset: "25%",
+                repeat: "50%",
                 symbol: L.Symbol.arrowHead({
-                    pixelSize: 10,
+                    pixelSize: 12,
                     polygon: false,
-                    pathOptions: {
-                        stroke: true,
-                        color: r.color,
-                        weight: 2
-                    }
+                    pathOptions: { stroke: true, color: "orange" }
                 })
             }
         ]
-    }).addTo(map);
+    }).addTo(corridorLayer);
 }
+
 
 function getRunwayFromWind(windDir) {
-    if (windDir === undefined || windDir === null) return "UNKNOWN";
+    if (!windDir) return "UNKNOWN";
 
-    if (windDir >= 240 && windDir <= 300) return "22";
-    if (windDir >= 60 && windDir <= 120) return "04";
+    const diff22 = Math.abs(windDir - 220);
+    const diff04 = Math.abs(windDir - 40);
 
-    return "UNKNOWN";
+    return diff22 < diff04 ? "22" : "04";
 }
 
-function computeCrosswind(runway, windDir, windSpeed) {
-    if (!RUNWAYS[runway]) return null;
-    if (windDir === undefined || windDir === null || !windSpeed) return null;
+function computeCrosswind(windDir, windSpeed, runwayHeading) {
+    if (!windDir || !windSpeed || !runwayHeading) {
+        return { crosswind: 0, angleDiff: 0 };
+    }
 
-    const rwHeading = RUNWAYS[runway].heading;
-    let diff = Math.abs(windDir - rwHeading);
-    if (diff > 180) diff = 360 - diff;
+    const angleDiff = Math.abs(windDir - runwayHeading);
+    const rad = angleDiff * Math.PI / 180;
+    const crosswind = Math.round(Math.abs(windSpeed * Math.sin(rad)));
 
-    const rad = diff * Math.PI / 180;
-    const cross = windSpeed * Math.sin(rad);
-
-    return {
-        crosswind: Math.round(cross),
-        angleDiff: Math.round(diff)
-    };
+    return { crosswind, angleDiff };
 }
 
 function updateRunwayPanel(runway, windDir, windSpeed, phase) {
@@ -214,6 +199,7 @@ function updateRunwayPanel(runway, windDir, windSpeed, phase) {
         `${info.crosswind} kt crosswind (Δ${info.angleDiff}°) – ` +
         `Vent ${windDir}°/${windSpeed} kt`;
 }
+
 
 // ======================================================
 // SONOMÈTRES
@@ -253,8 +239,8 @@ function updateSonometers(runway) {
         s.status = runway;
     });
 }
+
 function updateSonometersAdvanced(runway, phase) {
-    // Tout en gris par défaut
     Object.values(sonometers).forEach(s => {
         s.marker.setStyle({ color: "gray", fillColor: "gray" });
     });
@@ -310,43 +296,44 @@ function updateMetarUI(data) {
     const el = document.getElementById("metar");
     if (!el) return;
 
-    if (data.fallback) {
-        el.innerText = "METAR indisponible (fallback activé)";
-        updateSonometers("UNKNOWN");
-        drawRunway("UNKNOWN");
+    // Si METAR indisponible
+    if (!data || !data.raw) {
+        el.innerText = "METAR indisponible";
         drawCorridor("UNKNOWN");
-        updateRunwayPanel("UNKNOWN", null, null);
+        updateRunwayPanel("UNKNOWN", null, null, null);
         return;
     }
 
+    // Affichage du METAR brut
     el.innerText = data.raw;
 
+    // Extraction vent
     const windDir = data.wind_direction?.value;
     const windSpeed = data.wind_speed?.value;
+
+    // Détermination de la piste
     const runway = getRunwayFromWind(windDir);
-    
-    // Déterminer la phase (décollage / atterrissage)
-let phase = "takeoff";
 
-if (runway === "22") {
-    if (windDir >= 200 && windDir <= 260) phase = "landing";
-}
+    // Détermination de la phase (décollage / atterrissage)
+    let phase = "takeoff";
 
-if (runway === "04") {
-    if (windDir >= 20 && windDir <= 80) phase = "landing";
-}
+    if (runway === "22") {
+        if (windDir >= 200 && windDir <= 260) phase = "landing";
+    }
 
-// Mise à jour des sonomètres
-updateSonometersAdvanced(runway, phase);
+    if (runway === "04") {
+        if (windDir >= 20 && windDir <= 80) phase = "landing";
+    }
 
-// Mise à jour du panneau piste active
-updateRunwayPanel(runway, windDir, windSpeed, phase);
+    // Mise à jour sonomètres
+    updateSonometersAdvanced(runway, phase);
 
-    updateSonometers(runway);
+    // Mise à jour piste active (panneau)
+    updateRunwayPanel(runway, windDir, windSpeed, phase);
+
+    // Mise à jour visuelle carte
     drawRunway(runway);
     drawCorridor(runway);
-
-
 }
 
 // ======================================================
