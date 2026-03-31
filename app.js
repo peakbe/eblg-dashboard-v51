@@ -51,6 +51,26 @@ async function fetchJSON(url) {
     }
 }
 
+function updateStatusPanel(service, data) {
+    const panel = document.getElementById("status-panel");
+    if (!panel) return;
+
+    if (data.fallback) {
+        panel.className = "status-fallback";
+        panel.innerText = `${service} : fallback (source offline)`;
+        return;
+    }
+
+    if (data.error) {
+        panel.className = "status-offline";
+        panel.innerText = `${service} : offline`;
+        return;
+    }
+
+    panel.className = "status-ok";
+    panel.innerText = `${service} : OK`;
+}
+
 function deg2rad(d) {
     return d * Math.PI / 180;
 }
