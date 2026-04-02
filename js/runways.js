@@ -156,3 +156,23 @@ export function computeCrosswind(windDir, windSpeed, runwayHeading) {
         angleDiff: diff
     };
 }
+
+// ======================================================
+// ajout “Runway active”
+// ======================================================
+
+export function updateRunwayPanel(runway, windDir, windSpeed, crosswind) {
+    const panel = document.getElementById("runway-panel");
+    if (!panel) return;
+
+    if (runway === "UNKNOWN") {
+        panel.innerHTML = "<b>Piste :</b> —<br><b>Vent :</b> —";
+        return;
+    }
+
+    panel.innerHTML = `
+        <b>Piste active :</b> ${runway}<br>
+        <b>Vent :</b> ${windDir ?? "—"}° / ${windSpeed ?? "—"} kt<br>
+        <b>Crosswind :</b> ${crosswind} kt
+    `;
+}
