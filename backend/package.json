@@ -1,14 +1,12 @@
 {
-  "name": "eblg-proxy",
-  "version": "1.0.0",
-  "main": "index.js",
+  "name": "eblg-backend",
   "type": "module",
-  "scripts": {
-    "start": "node index.js"
-  },
   "dependencies": {
     "express": "^4.18.2",
     "node-fetch": "^3.3.2",
     "cors": "^2.8.5"
+  },
+  "scripts": {
+    "start": "node index.js"
   }
 }
